@@ -177,6 +177,7 @@ impl AccessTokens {
         Ok(ctx.props().backend.info.request(
             Method::GET,
             "/api/tokens/v1alpha1",
+            vec![],
             Nothing,
             vec![],
             ctx.callback_api::<Json<Vec<AccessToken>>, _>(move |response| match response {
@@ -203,6 +204,7 @@ impl AccessTokens {
         Ok(ctx.props().backend.info.request(
             Method::DELETE,
             format!("/api/tokens/v1alpha1/{}", token.prefix),
+            vec![],
             Nothing,
             vec![],
             ctx.callback_api::<(), _>(move |response| match response {
@@ -216,6 +218,7 @@ impl AccessTokens {
         Ok(ctx.props().backend.info.request(
             Method::POST,
             "/api/tokens/v1alpha1",
+            vec![],
             Nothing,
             vec![],
             ctx.callback_api::<Json<AccessTokenCreated>, _>(move |response| match response {

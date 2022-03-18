@@ -10,7 +10,7 @@ use crate::{
         devices::{CreateDialog, DetailsSection, Pages},
         HasReadyState,
     },
-    utils::{navigate_to, url_encode},
+    utils::{navigate_to, url_encode, PagingOptions},
 };
 use drogue_client::registry::v1::{Application, Device};
 use http::{Method, StatusCode};
@@ -61,6 +61,8 @@ pub struct Props {
 pub enum Msg {
     LoadApps,
     Load,
+    Navigate(patternfly_yew::Navigation),
+    SetLimit(i32),
     SetData(Vec<DeviceEntry>),
     SetApps(Vec<String>),
     SetApp(String),
@@ -80,6 +82,7 @@ pub struct Index {
     app: String,
     app_filter: String,
     apps: Vec<String>,
+    paging_options: PagingOptions,
 }
 
 impl Component for Index {
@@ -97,6 +100,7 @@ impl Component for Index {
             app,
             app_filter: String::new(),
             apps: Vec::new(),
+            paging_options: PagingOptions::default(),
         }
     }
 
@@ -110,6 +114,20 @@ impl Component for Index {
                 Ok(task) => self.fetch_task = Some(task),
                 Err(err) => error("Failed to fetch", err),
             },
+            Msg::Navigate(opts) => {
+                self.paging_options = match opts {
+                    Navigation::First => self.paging_options.first(),
+                    Navigation::Previous => self.paging_options.previous(),
+                    Navigation::Next => self.paging_options.next(),
+                    //fixme the registry must returns the total number of device for that
+                    Navigation::Last => self.paging_options.next(),
+                };
+                ctx.link().send_message(Msg::Load);
+            }
+            Msg::SetLimit(limit) => {
+                self.paging_options.limit = limit;
+                ctx.link().send_message(Msg::Load);
+            }
             Msg::SetApps(apps) => {
                 self.fetch_task = None;
 
@@ -130,6 +148,8 @@ impl Component for Index {
             }
             Msg::SetApp(app) => {
                 if self.app != app {
+                    //reset paging options
+                    self.paging_options = PagingOptions::default();
                     let ctx = ApplicationContext::Single(app);
                     SharedDataDispatcher::new().set(ctx.clone());
                     navigate_to(AppRoute::Devices(Pages::Index { app: ctx }));
@@ -174,6 +194,11 @@ impl Component for Index {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let link = ctx.link().clone();
         let app_filter = self.app_filter.clone();
+
+        //pagination and set_limit callbacks
+        let nav = link.callback(move |nav| Msg::Navigate(nav));
+        let set_limit = link.callback(move |limit| Msg::SetLimit(limit));
+
         return html! {
             <>
                 <PageSection variant={PageSectionVariant::Light}>
@@ -218,6 +243,18 @@ impl Component for Index {
             { if self.app.is_empty() {html!{
             }} else { html!{
                 <PageSection>
+                <Toolbar>
+                    <ToolbarGroup>
+                        <ToolbarItem modifiers={[ToolbarElementModifier::Right.all()]}>
+                            <Pagination
+                                offset= {self.paging_options.offset}
+                                selected_choice={self.paging_options.limit}
+                                navigation_callback={nav}
+                                limit_callback={set_limit}
+                            />
+                        </ToolbarItem>
+                    </ToolbarGroup>
+                </Toolbar>
                     <Table<SharedTableModel<DeviceEntry>>
                         entries={SharedTableModel::from(self.entries.clone())}
                         header={{html_nested!{
@@ -246,6 +283,10 @@ impl Index {
                 "/api/registry/v1alpha1/apps/{}/devices",
                 url_encode(&self.app)
             ),
+            vec![
+                ("limit", &self.paging_options.limit.to_string()),
+                ("offset", &self.paging_options.offset.to_string()),
+            ],
             Nothing,
             vec![],
             ctx.callback_api::<Json<Vec<Device>>, _>(move |response| match response {
@@ -276,6 +317,7 @@ impl Index {
         Ok(ctx.props().backend.info.request(
             Method::GET,
             "/api/registry/v1alpha1/apps",
+            vec![],
             Nothing,
             vec![],
             ctx.callback_api::<Json<Vec<Application>>, _>(move |response| match response {
@@ -299,6 +341,7 @@ impl Index {
                 url_encode(&self.app),
                 url_encode(name)
             ),
+            vec![],
             Nothing,
             vec![],
             ctx.callback_api::<(), _>(move |response| match response {

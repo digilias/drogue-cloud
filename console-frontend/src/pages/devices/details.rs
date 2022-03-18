@@ -109,6 +109,7 @@ impl Details {
                 url_encode(&ctx.props().app),
                 url_encode(&ctx.props().name)
             ),
+            vec![],
             Nothing,
             vec![],
             ctx.callback_api::<Json<Device>, _>(move |response| match response {
@@ -126,6 +127,7 @@ impl Details {
                 url_encode(&ctx.props().app),
                 url_encode(&ctx.props().name)
             ),
+            vec![],
             Json(app),
             vec![],
             ctx.callback_api::<(), _>(move |response| match response {

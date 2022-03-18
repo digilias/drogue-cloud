@@ -66,6 +66,7 @@ impl BackendInformation {
         &self,
         method: http::Method,
         path: S,
+        query: Vec<(&str, &str)>,
         payload: IN,
         headers: Vec<(&str, &str)>,
         handler: H,
@@ -75,13 +76,22 @@ impl BackendInformation {
         IN: RequestPayload,
         H: RequestHandler<anyhow::Result<Response>>,
     {
-        self.request_with(method, path, payload, headers, Default::default(), handler)
+        self.request_with(
+            method,
+            path,
+            query,
+            payload,
+            headers,
+            Default::default(),
+            handler,
+        )
     }
 
     pub fn request_with<S, IN, H>(
         &self,
         method: http::Method,
         path: S,
+        query: Vec<(&str, &str)>,
         payload: IN,
         headers: Vec<(&str, &str)>,
         options: RequestOptions,
@@ -105,6 +115,10 @@ impl BackendInformation {
                 };
             }
         };
+
+        for (k, v) in query {
+            request = request.query(k.into(), v.into());
+        }
 
         request = request.header("Authorization".into(), format!("Bearer {}", token).into());
 
@@ -267,6 +281,7 @@ impl Backend {
         Self::get().ok_or(RequestError::Backend)?.info.request_with(
             method,
             path,
+            vec![],
             payload,
             vec![],
             options,
