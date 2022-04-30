@@ -17,7 +17,7 @@ ntex = { version = "0.5", features = ["tokio"] }
 http = "0.2"
 prometheus = { version = "^0.13", default-features = false }
 
-keycloak = "14"
+keycloak = { version = "17", features = ["quarkus"] }
 
 tokio = "1"
 futures-util = { version = "0.3.7", default-features = false }
